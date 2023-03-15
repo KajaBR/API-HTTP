@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Nasza prognoza pogody</title>
+</head>
+<body>
+<div>
+	<form id="formularz">
+		<select id="cityName" name="city">
+			<option value="Warsaw">Warszawa</option>
+			<option value="Gdansk">Gdańsk</option>
+			<option value="Poznan">Poznań</option>
+			<option value="Krakow">Kraków</option>
+			<option value="Lodz">Lódź</option>
+		</select>
+		<button type="submit">Szukaj</button>
+	</form>
+	<ul>
+		<li>Miasto: <span id="city"></span></li>
+		<li>Temperatura: <span id="temp"></span></li>
+		<li>Opis pogody: <span id="desc"></span></li>
+		<li>Ikona: <img src="" id="icon"></li>
+	</ul>
+</div>
+<script type="text/javascript">
+
+function getApiData (city) {
+	const api_key = "fa3a0c16c26152fa8d838e9e458ed309";
+	const endpoint = "https://api.openweathermap.org/data/2.5/weather?q=" + city + "&units=metric&lang=pl&appid=" + api_key;
+
+	fetch(endpoint)
+	  .then(response => response.json())
+	  .then(data => {
+	    console.log(data); // wyświetlenie danych w konsoli
+	    const city = data.name;
+	    const temp = data.main.temp;
+	    const desc = data.weather[0].description;
+	    const icon = "https://openweathermap.org/img/w/" + data.weather[0].icon + ".png";
+
+	    // wstawienie danych do elementu HTML
+	    document.getElementById("city").textContent = city;
+	    document.getElementById("temp").textContent = temp + " °C";
+	    document.getElementById("desc").textContent = desc;
+	    document.getElementById("icon").src = icon;
+	  })
+	  .catch(error => console.error(error));
+}
+
+function getCityName () {
+	return document.getElementById('cityName').value
+}
+function submitForm(event) {
+	event.preventDefault()
+	getApiData(getCityName())
+
+}
+document.getElementById('formularz').addEventListener('submit', submitForm)
+getApiData(getCityName())
+
+</script>
+</body>
+</html>

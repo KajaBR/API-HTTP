@@ -1,0 +1,202 @@
+<!-- długoterminowa -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nasza prognoza pogody</title>
+    <style type="text/css">
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: arial;
+            font-size: 10px;
+        }
+
+        #forecast-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: space-around;
+            width: 100%;
+
+        }
+
+        #forecast-list li {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #cccccc;
+            width: 45%;
+            margin: 5px;
+            position: relative;
+        }
+
+        #forecast-list li img {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 40px;
+        }
+
+        #forecast-list li p {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+<div>
+    <form id="formularz">
+        <select id="cityName" name="city">
+            <option value="Warsaw">Warszawa</option>
+            <option value="Gdansk">Gdańsk</option>
+            <option value="Poznan">Poznań</option>
+            <option value="Krakow">Kraków</option>
+            <option value="Lodz">Lódź</option>
+        </select>
+        <!-- <button type="submit">Szukaj</button> -->
+    </form>
+    <div>
+        <h2>Pogoda bieżąca</h2>
+        <ul>
+            <li>Miasto: <span id="city"></span></li>
+            <li>Temperatura: <span id="temp"></span></li>
+            <li>Opis pogody: <span id="desc"></span></li>
+            <li>Ikona: <img src="" id="icon"></li>
+        </ul>
+    </div>
+    <div>
+        <h2>Prognoza na następne 5 dni</h2>
+        <ul id="forecast-list"></ul>
+    </div>
+</div>
+<script type="text/javascript">
+    function getIconUrl(icon) {
+        return "https://openweathermap.org/img/w/" + icon + ".png"
+    }
+
+    function getTempText(temp) {
+        return temp + " °C"
+    }
+
+    // funkcja zwracjąca liczbę z zerem wiodącym
+    function getNumberAsStringWithLeadingZero(value) {
+        if (value <= 9) {
+            return `0${value}`
+        }
+        return `${value}`
+    }
+
+    // funkcja pomocnicza konwertująca timestamp w sekundahc na obiekt Date i zwracająca datę w żądanym formacie
+    function getDateTimeFromTimestamp(timestamp) {
+        const date = new Date(timestamp * 1000)
+        const year = date.getFullYear()
+        const month = getNumberAsStringWithLeadingZero(date.getMonth() + 1)
+        const day = getNumberAsStringWithLeadingZero(date.getDate())
+        const hour = getNumberAsStringWithLeadingZero(date.getHours())
+        const minutes = getNumberAsStringWithLeadingZero(date.getMinutes())
+        const seconds = getNumberAsStringWithLeadingZero(date.getSeconds())
+        return `${year}-${month}-${day} ${hour}:${minutes}:${seconds}`
+    }
+
+    // 6. pobieram dane z API i parsuję zwróconego JSONa
+    function getDataFromApi(endpoint, city) {
+        const api_key = "fa3a0c16c26152fa8d838e9e458ed309";
+        const host = "https://api.openweathermap.org/data/2.5"
+        const url = host + endpoint + "?q=" + city + "&units=metric&lang=pl&appid=" + api_key;
+        return fetch(url)
+            .then(response => response.json())
+            .catch(error => console.error(error));
+    }
+
+    // 5. pobieram prognozę pogody z API dla danego miasta
+    function getWeatherForecastForCity(city) {
+        const endpoint = "/forecast";
+        getDataFromApi(endpoint, city)
+            .then(data => generateForecastContent(data.list))
+    }
+
+    // 7. w pętli generuję treść HTML i wklejam do elementu UL w DOMie
+    function generateForecastContent(items) {
+        // łapiemy uchwyt na UL
+        const forecastList = document.getElementById('forecast-list')
+        // czyścimy UL z zawartości
+        forecastList.innerHTML = ''
+
+        function canShowItem(timestamp) {
+            const hours = ['10', '16']
+            const date = new Date(timestamp * 1000)
+            const hour = getNumberAsStringWithLeadingZero(date.getHours())
+            return !!hours.includes(hour)
+        }
+
+        // w pętli przetwarzamy wyniki
+        items.forEach(item => {
+            // sprawdzamy czy chemy wyświetlić dany wynik (po godzinach)
+            if (canShowItem(item.dt)) {
+                // generujemy kod HTML poszczególnych wyników
+                const node = document.createElement("li");
+                const content = `
+				<img src="${getIconUrl(item.weather[0].icon)}" />
+				<p>${getDateTimeFromTimestamp(item.dt)}</p>
+				<p>${getTempText(item.main.temp)}</p>
+				<p>${item.weather[0].description}</p>
+			`
+                node.innerHTML = content
+                // wklejamy wygenerowany LI do UL
+                forecastList.appendChild(node);
+            }
+        })
+    }
+
+    // 4. pobieramy pogodę dla miasta z API i uzupełniamy HTMLa
+    function getWeatherForCity(city) {
+        const endpoint = "/weather"
+
+        getDataFromApi(endpoint, city)
+            .then(data => {
+                const city = data.name;
+                const temp = data.main.temp;
+                const desc = data.weather[0].description;
+                const icon = getIconUrl(data.weather[0].icon);
+
+                // wstawienie danych do elementu HTML
+                document.getElementById("city").textContent = city;
+                document.getElementById("temp").textContent = getTempText(temp);
+                document.getElementById("desc").textContent = desc;
+                document.getElementById("icon").src = icon;
+            })
+    }
+
+    function getCityName() {
+        return document.getElementById('cityName').value
+    }
+
+    // 3. po potwierdzeniu formularza pobieram dane z API dla wybranego miasta
+    // function submitForm(event) {
+    //     event.preventDefault()
+    //     getWeatherForCity(getCityName())
+    //     getWeatherForecastForCity(getCityName())
+
+    // }
+
+    // 1a. ustawiam nasłuch na event submit z formularza
+    // document.getElementById('formularz').addEventListener('submit', submitForm)
+    
+    // 1b. ustawiam nasłuch na event change z formularza pola select
+    document.getElementById('cityName').addEventListener('change', function (event) {
+        getWeatherForCity(getCityName())
+        getWeatherForecastForCity(getCityName())
+    })
+    
+    // 2. pobieram dane na start dla domyślnie wybranego miasta
+    getWeatherForCity(getCityName())
+    getWeatherForecastForCity(getCityName())
+</script>
+</body>
+</html>
